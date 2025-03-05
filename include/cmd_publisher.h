@@ -38,14 +38,16 @@ private:
     double goal_y = 0.0;
     bool position_updated = false;
     bool obstacle_detected = false;
-    int i = 0;
+    int current_waypoint = 0;
     bool goal_received;
 
-    double Kp_linear = 1.1;  // 선속도 P 게인 1.0
-    double Kd_linear = 0.6;  // 선속도 D 게인 0.5
-    double Kp_angular = 1.3; // 회전 P 게인 1.0
-    double Kd_angular = 1.0; // 회전 D 게인 0.3
+    double Kp_linear = 0.5;  // 선속도 P 게인 1.0
+    double Kd_linear = 0.1;  // 선속도 D 게인 0.5
+    double Kp_angular = 0.6; // 회전 P 게인 1.0
+    double Kd_angular = 0.3; // 회전 D 게인 0.3
     rclcpp::Time prev_time;
+    // std::vector<PathNode> path;
+    // rclcpp::Time last_replan_time;
 
     Map map;
 

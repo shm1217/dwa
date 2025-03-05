@@ -80,7 +80,7 @@ std::vector<std::vector<int>> createGrid(double width, double height, const std:
 
         if (x_idx >= 0 && x_idx < grid_width && y_idx >= 0 && y_idx < grid_height)
         {
-            double robot_radius = 0.3;                                     // 로봇 반지름 (m)
+            double robot_radius = 0.2;                                     // 로봇 반지름 (m)
             int expand_cells = static_cast<int>(robot_radius / cell_size); // 장애물 확장 셀 개수
 
             for (int i = 0; i < 8; i++) // 8방향

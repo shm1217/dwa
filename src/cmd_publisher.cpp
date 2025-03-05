@@ -34,7 +34,7 @@ CmdPublisher::CmdPublisher() : Node("cmd_publisher"), goal_x(0.0), goal_y(0.0), 
     timer_tf = this->create_wall_timer(
         50ms, std::bind(&CmdPublisher::timer_tf_callback, this));
     timer_cmd = this->create_wall_timer(
-        500ms, std::bind(&CmdPublisher::timer_cmd_callback, this));
+        1000ms, std::bind(&CmdPublisher::timer_cmd_callback, this));
 
     publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("robot1/marker", 10);
     marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("visualization/marker", 10);
@@ -42,6 +42,7 @@ CmdPublisher::CmdPublisher() : Node("cmd_publisher"), goal_x(0.0), goal_y(0.0), 
         "move_base_simple/goal", 10,
         std::bind(&CmdPublisher::goal_callback, this, std::placeholders::_1));
     prev_time = this->now();
+    // last_replan_time = this->now();
 }
 void CmdPublisher::goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
@@ -160,15 +161,11 @@ void CmdPublisher::moverobot()
         return;
     }
 
-    std::vector<std::vector<int>> grid = createGrid(10, 10, grid_obstacles);
-
     int start_x_idx = static_cast<int>(x / cell_size);
     int start_y_idx = static_cast<int>(y / cell_size);
-
-    // 목표 위치를 그리드 인덱스로 변환
     int goal_x_idx = static_cast<int>(goal_x / cell_size);
     int goal_y_idx = static_cast<int>(goal_y / cell_size);
-
+    std::vector<std::vector<int>> grid = createGrid(10, 10, grid_obstacles);
     std::vector<PathNode> path = FindPath(grid, PathNode(start_x_idx, start_y_idx), PathNode(goal_x_idx, goal_y_idx));
 
     if (path.empty())
@@ -176,88 +173,105 @@ void CmdPublisher::moverobot()
         RCLCPP_WARN(this->get_logger(), "No valid path found!");
         return;
     }
-    else
+
+    octomap::point3d search_point(x, y, z);
+    octomap::point3d closest_obstacle;
+    float distance;
+    map.get_distance_and_closest_obstacle(search_point, distance, closest_obstacle);
+    if (distance < 0.1) // 장애물이 너무 가까우면 회피
     {
-        visualizePath(path);
-        octomap::point3d search_point(x, y, z);
-        octomap::point3d closest_obstacle;
-        float distance;
-        map.get_distance_and_closest_obstacle(search_point, distance, closest_obstacle);
-        if (distance < 0.3) // 장애물이 너무 가까우면 회피
+        RCLCPP_INFO(this->get_logger(), "장애물 감지!");
+        // 장애물 위치 저장
+        int obs_x = static_cast<int>(closest_obstacle.x() / cell_size);
+        int obs_y = static_cast<int>(closest_obstacle.y() / cell_size);
+        grid_obstacles.insert({ obs_x, obs_y });
+        // std::vector<std::vector<int>> grid = createGrid(10, 10, grid_obstacles);
+        //  새로운 경로 탐색
+        /*std::vector<PathNode> new_path = FindPath(grid, PathNode(start_x_idx, start_y_idx), PathNode(goal_x_idx, goal_y_idx));
+
+        if (new_path.empty())
         {
-            RCLCPP_INFO(this->get_logger(), "장애물 감지! 위치 저장 및 경로 재계산합니다.");
-            // 장애물 위치 저장
-            int obs_x = static_cast<int>(closest_obstacle.x() / cell_size);
-            int obs_y = static_cast<int>(closest_obstacle.y() / cell_size);
-            grid_obstacles.insert({ obs_x, obs_y });
-            std::vector<std::vector<int>> grid = createGrid(10, 10, grid_obstacles);
-            // 새로운 경로 탐색
-            std::vector<PathNode> new_path = FindPath(grid, PathNode(start_x_idx, start_y_idx), PathNode(goal_x_idx, goal_y_idx));
-
-            if (new_path.empty())
-            {
-                RCLCPP_WARN(this->get_logger(), "새로운 경로를 찾을 수 없습니다.");
-                return;
-            }
-
-            // 새로운 경로로 다시 이동
-            path = new_path;
-            i = 0; // 새로운 경로로 돌아가서 다시 시작
-        }
-        if (i < path.size())
-        {
-            double next_x = (path[i].x + 0.5) * cell_size;
-            double next_y = (path[i].y + 0.5) * cell_size;
-
-            // 현재 시간 계산
-            rclcpp::Time current_time = this->now();
-            double dt = (current_time - prev_time).seconds(); // 시간 변화량
-
-            // 선속도 제어 (목표 점까지의 거리)
-            double linear_error = sqrt(pow(next_x - x, 2) + pow(next_y - y, 2));
-            double linear_derivative = (linear_error - prev_linear_error) / dt;
-            double linear_velocity = Kp_linear * linear_error + Kd_linear * linear_derivative;
-
-            // 회전 속도 제어 (목표 방향까지의 각도 차이)
-            double angle_to_goal = atan2(next_y - y, next_x - x);
-            double angular_error = angle_to_goal - yaw;
-            double angular_derivative = (angular_error - prev_angular_error) / dt;
-            double angular_velocity = Kp_angular * angular_error + Kd_angular * angular_derivative;
-
-            // 값 업데이트
-            prev_linear_error = linear_error;
-            prev_angular_error = angular_error;
-            prev_time = current_time;
-
-            // Twist 메시지 설정
-            geometry_msgs::msg::Twist cmd;
-            cmd.linear.x = std::max(0.1, std::min(0.3, linear_velocity));    // 속도 제한 (0.1 ~ 0.3 m/s)
-            cmd.angular.z = std::max(-1.0, std::min(1.0, angular_velocity)); // 회전 속도 제한 (-1.0 ~ 1.0 rad/s)
-
-            pub_cmd->publish(cmd);
-
-            RCLCPP_INFO(this->get_logger(), "i=%ld, path.size=%ld", i, path.size());
-            RCLCPP_INFO(this->get_logger(), "현재 위치: (%f, %f), 목표: (%f, %f)", x, y, next_x, next_y);
-            RCLCPP_INFO(this->get_logger(), "속도: linear=%f, angular=%f", cmd.linear.x, cmd.angular.z);
-
-            if (linear_error < 0.1) // 목표 점에 도달하면 다음 점으로 이동
-            {
-                i++;
-            }
+            RCLCPP_WARN(this->get_logger(), "새로운 경로를 찾을 수 없습니다.");
+            return;
         }
 
-        if (abs(x - goal_x) + abs(y - goal_y) < 0.2)
+        // 새로운 경로로 다시 이동
+        path = new_path;
+        current_waypoint = 0; // 새로운 경로로 돌아가서 다시 시작*/
+    }
+
+    visualizePath(path);
+
+    double lookahead_distance = 0.3; // Pure Pursuit에서 사용할 lookahead 거리
+
+    // 가장 먼 유효한 waypoint 찾기
+    int target_waypoint = current_waypoint;
+    if (current_waypoint < path.size())
+    {
+        double waypoint_x = (path[current_waypoint].x + 0.5) * cell_size;
+        double waypoint_y = (path[current_waypoint].y + 0.5) * cell_size;
+        double distance_to_waypoint = sqrt(pow(waypoint_x - x, 2) + pow(waypoint_y - y, 2));
+
+        if (distance_to_waypoint > lookahead_distance)
         {
-            RCLCPP_INFO(this->get_logger(), "목적지 도착");
-            geometry_msgs::msg::Twist cmd;
-            cmd.angular.z = 0.0;
-            cmd.linear.x = 0.0;
-            pub_cmd->publish(cmd);
-            return; // 함수 종료
+            return;
+        }
+        target_waypoint = current_waypoint;
+    }
+
+    if (target_waypoint < path.size())
+    {
+        double next_x = (path[target_waypoint].x + 0.5) * cell_size;
+        double next_y = (path[target_waypoint].y + 0.5) * cell_size;
+
+        rclcpp::Time current_time = this->now();
+        double dt = (current_time - prev_time).seconds();
+
+        double linear_error = sqrt(pow(next_x - x, 2) + pow(next_y - y, 2));
+        double linear_derivative = (linear_error - prev_linear_error) / dt;
+        double linear_velocity = Kp_linear * linear_error + Kd_linear * linear_derivative;
+
+        double angle_to_goal = atan2(next_y - y, next_x - x);
+        double angular_error = angle_to_goal - yaw;
+        while (angular_error > M_PI)
+            angular_error -= 2 * M_PI;
+        while (angular_error < -M_PI)
+            angular_error += 2 * M_PI;
+
+        double angular_derivative = (angular_error - prev_angular_error) / dt;
+        double angular_velocity = Kp_angular * angular_error + Kd_angular * angular_derivative;
+
+        prev_linear_error = linear_error;
+        prev_angular_error = angular_error;
+        prev_time = current_time;
+
+        geometry_msgs::msg::Twist cmd;
+        cmd.linear.x = std::max(0.1, std::min(0.3, linear_velocity));
+        cmd.angular.z = std::max(-2.0, std::min(2.0, angular_velocity));
+
+        pub_cmd->publish(cmd);
+
+        RCLCPP_INFO(this->get_logger(), "target_waypoint=%d, path.size=%ld", target_waypoint, path.size());
+        RCLCPP_INFO(this->get_logger(), "현재 위치: (%f, %f), 목표: (%f, %f)", x, y, next_x, next_y);
+        RCLCPP_INFO(this->get_logger(), "속도: linear=%f, angular=%f", cmd.linear.x, cmd.angular.z);
+
+        if (linear_error < 0.1)
+        {
+            current_waypoint = target_waypoint + 1;
         }
     }
-}
 
+    if (abs(x - goal_x) + abs(y - goal_y) < 0.2 || current_waypoint >= path.size())
+    {
+        RCLCPP_INFO(this->get_logger(), "목적지 도착");
+        geometry_msgs::msg::Twist cmd;
+        cmd.angular.z = 0.0;
+        cmd.linear.x = 0.0;
+        pub_cmd->publish(cmd);
+        goal_received = false;
+        return;
+    }
+}
 void CmdPublisher::visualizePath(const std::vector<PathNode> &path)
 {
     // 경로를 RViz에 마커로 표시하기 위한 마커 메시지 생성
