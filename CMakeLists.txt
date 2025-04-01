@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(ros2_term_project)
+project(ros2_dwa_project)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -28,6 +28,8 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(octomap_ros REQUIRED)
 find_package(octomap_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
+
 
 
 set(ROS2_PACKAGES
@@ -40,7 +42,10 @@ set(ROS2_PACKAGES
   octomap_ros
   octomap_msgs)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(
+  ${PROJECT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIR}
+)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -57,7 +62,7 @@ add_executable(cmd_publisher_node
         src/cmd_publisher_node.cpp
         src/cmd_publisher.cpp
         src/map.cpp
-        src/pathfinder.cpp)
+        src/dynamic_window_approach.cpp)
 ament_target_dependencies(cmd_publisher_node ${ROS2_PACKAGES})
 install(TARGETS cmd_publisher_node
         DESTINATION lib/${PROJECT_NAME})

@@ -1,23 +1,26 @@
-#ifndef ROS2_TERM_PROJECT_CMD_PUBLISHER_H
-#define ROS2_TERM_PROJECT_CMD_PUBLISHER_H
+/*#ifndef ROS2_TERM_PROJECT_CMD_PUBLISHER_H
+#define ROS2_TERM_PROJECT_CMD_PUBLISHER_H*/
+#pragma once
 
+#include "dynamic_window_approach.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "map.h"
 #include "octomap/OcTree.h"
-#include "pathfinder.h"
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
+#include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include <Eigen/Dense>
+#include <chrono>
 #include <cmath>
+#include <geometry_msgs/msg/point.hpp>
+#include <memory>
 #include <queue>
+#include <rclcpp/publisher.hpp>
 #include <set>
 #include <vector>
-#pragma once
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "visualization_msgs/msg/marker.hpp"
-#include <geometry_msgs/msg/point.hpp>
-#include <rclcpp/publisher.hpp>
 
 class CmdPublisher : public rclcpp::Node
 {
@@ -27,27 +30,18 @@ public:
 private:
     void timer_tf_callback();
     void timer_cmd_callback();
-    void octomap_callback(const OctomapMsg &octomap_msg); // Octomap 콜백
-    void moverobot();
-    void visualizePath(const std::vector<PathNode> &path);
+    void octomap_callback(const OctomapMsg &octomap_msg);
     void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-    void stopRobot();
+    void visualizeTrajectory(const std::vector<Eigen::VectorXd> &trajectory);
+
     double x, y, z;
     double yaw;
     double goal_x = 0.0;
     double goal_y = 0.0;
-    bool position_updated = false;
-    bool obstacle_detected = false;
-    int current_waypoint = 0;
-    bool goal_received;
-
-    double Kp_linear = 0.5;  // 선속도 P 게인 1.0
-    double Kd_linear = 0.1;  // 선속도 D 게인 0.5
-    double Kp_angular = 0.6; // 회전 P 게인 1.0
-    double Kd_angular = 0.3; // 회전 D 게인 0.3
+    bool position_updated;
+    bool goal_received = false;
+    int trajectory_marker_id = 0;
     rclcpp::Time prev_time;
-    // std::vector<PathNode> path;
-    // rclcpp::Time last_replan_time;
 
     Map map;
 
@@ -56,12 +50,15 @@ private:
     rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
-    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
-    visualization_msgs::msg::MarkerArray marker_array;
-
-    visualization_msgs::msg::Marker marker;
+    // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub;
+    visualization_msgs::msg::MarkerArray marker_array;
+    visualization_msgs::msg::Marker marker;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
+
+    std::shared_ptr<DynamicWindowApproach> dwa_;
+
+    std::vector<geometry_msgs::msg::Point> path_history_; // 로봇 이동 기록
 };
 
-#endif // ROS2_TERM_PROJECT_CMD_PUBLISHER_H
+// #endif // ROS2_TERM_PROJECT_CMD_PUBLISHER_H

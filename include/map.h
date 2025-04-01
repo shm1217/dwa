@@ -1,6 +1,8 @@
-#ifndef ROS2_TERM_PROJECT_MAP_H
-#define ROS2_TERM_PROJECT_MAP_H
+/*#ifndef ROS2_TERM_PROJECT_MAP_H
+#define ROS2_TERM_PROJECT_MAP_H*/
+#pragma once
 
+#include <Eigen/Dense>
 #include <dynamicEDT3D/dynamicEDTOctomap.h>
 #include <octomap/ColorOcTree.h>
 #include <octomap_msgs/conversions.h>
@@ -35,4 +37,4 @@ private:
     DynamicEDTMapPtr dynamic_edt_map_ptr = nullptr;
 };
 
-#endif // ROS2_TERM_PROJECT_MAP_H
+// #endif // ROS2_TERM_PROJECT_MAP_H

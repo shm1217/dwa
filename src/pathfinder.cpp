@@ -101,7 +101,3 @@ std::vector<std::vector<int>> createGrid(double width, double height, const std:
 
     return grid;
 }
-// 노드를 나누는 방법 두가지? 실수 좌표를 사용하는 방식, 그리드 인덱스를 사용하는 방식
-// 두 방식이 섞여있는 것 같음.
-// 장애물 인식은 잘 되는데 장애물 저장이 잘 안되고 있는 것 같음(셀이 0에서 1로 바뀌지 않음)
-// 그리드 인덱스방식 사용!  1000x1000, segmentation fault 발생

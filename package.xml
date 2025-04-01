@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_term_project</name>
+  <name>ros2_dwa_project</name>
   <version>0.0.0</version>
-  <description>ros2 term project</description>
+  <description>ros2 dwa project</description>
   <maintainer email="jungwonpark@seoultech.ac.kr">Jungwon Park</maintainer>
   <license>MIT</license>
 
