@@ -8,6 +8,8 @@ DynamicWindowApproach::DynamicWindowApproach(double goal_x, double goal_y)
     currentState_ = Eigen::VectorXd::Zero(5); // x, y, theta, v, w 초기화
     goal_ = Eigen::Vector2d(goal_x, goal_y);
     dynamic_window_.resize(4); // dynamic window 크기 설정
+    /*marker_tra = this->create_publisher<visualization_msgs::msg::Marker>(
+        "trajectory/marker", 10);*/
 }
 
 void DynamicWindowApproach::setCurrentState(double x, double y, double theta, double v, double w)
@@ -25,12 +27,13 @@ void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs
     obstacles_ = obs;
 }
 
-Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하고 최적의 조합 반환
+Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하고 최적의 조합 반환, 최종적으로 사용하는 함수
 {
     computeDynamicWindow();
     double min_cost = std::numeric_limits<double>::max();
     Eigen::Vector2d best_control(0.0, 0.0);
     best_trajectory_.clear();
+    all_trajectories_.clear();
 
     for (double v = dynamic_window_[0]; v <= dynamic_window_[1]; v += v_res_)
     {
@@ -38,8 +41,9 @@ Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하�
         {
             Eigen::Vector2d control(v, w);
             auto traj = simulateTrajectory(control);
-            double cost = evaluateTrajectoryCost(traj);
+            all_trajectories_.push_back(traj); // 후보 저장
 
+            double cost = evaluateTrajectoryCost(traj);
             if (cost < min_cost)
             {
                 min_cost = cost;
@@ -48,7 +52,12 @@ Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하�
             }
         }
     }
+
     return best_control;
+}
+const std::vector<std::vector<Eigen::VectorXd>> &DynamicWindowApproach::getAllTrajectories() const
+{
+    return all_trajectories_;
 }
 
 std::vector<Eigen::VectorXd> DynamicWindowApproach::simulateTrajectory(const Eigen::Vector2d &control) // 경로 저장
@@ -65,14 +74,13 @@ std::vector<Eigen::VectorXd> DynamicWindowApproach::simulateTrajectory(const Eig
         state(1) += control(0) * std::sin(state(2)) * dt_; // state(1)=로봇의 현재 y좌표
         state(3) = control(0);                             // state(3) 로봇의 선속도
         state(4) = control(1);                             // state(4)=로봇의 각속도
-
         trajectory.push_back(state);
         time += dt_;
     }
     return trajectory;
 }
 
-void DynamicWindowApproach::computeDynamicWindow() // 로봇이 가능한 속도 범위 설정
+void DynamicWindowApproach::computeDynamicWindow() // 로봇이 이동 가능한 속도 범위 설정
 {
     double v = currentState_(3);
     double w = currentState_(4);

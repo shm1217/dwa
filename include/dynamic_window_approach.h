@@ -2,12 +2,15 @@
 
 #pragma once
 
+#include "visualization_msgs/msg/marker.hpp"
 #include <Eigen/Dense>
 #include <cmath>
 #include <limits>
+#include <rclcpp/publisher.hpp>
+#include <set>
 #include <vector>
 
-class DynamicWindowApproach
+class DynamicWindowApproach //: public rclcpp::Node
 {
 public:
     DynamicWindowApproach(double goal_x, double goal_y);
@@ -18,6 +21,7 @@ public:
 
     Eigen::Vector2d computeBestControl();
     std::vector<Eigen::VectorXd> getBestTrajectory() const;
+    const std::vector<std::vector<Eigen::VectorXd>> &getAllTrajectories() const;
 
 private:
     void computeDynamicWindow();
@@ -35,9 +39,10 @@ private:
 
     std::vector<double> dynamic_window_; // [v_min, v_max, w_min, w_max]
     std::vector<Eigen::VectorXd> best_trajectory_;
+    std::vector<std::vector<Eigen::VectorXd>> all_trajectories_;
 
-    double dt_ = 0.1;           // time step
-    double predict_time_ = 2.0; // prediction horizon
+    double dt_ = 0.1;           // 0.1
+    double predict_time_ = 3.0; // 2.0
 
     // robot limits
     double max_speed_ = 0.4;

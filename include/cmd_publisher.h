@@ -33,6 +33,7 @@ private:
     void octomap_callback(const OctomapMsg &octomap_msg);
     void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void visualizeTrajectory(const std::vector<Eigen::VectorXd> &trajectory);
+    void visualizeAllTrajectories(const std::vector<std::vector<Eigen::VectorXd>> &trajectories);
 
     double x, y, z;
     double yaw;
@@ -41,6 +42,8 @@ private:
     bool position_updated;
     bool goal_received = false;
     int trajectory_marker_id = 0;
+
+    double state_x, state_y;
     rclcpp::Time prev_time;
 
     Map map;
@@ -50,15 +53,16 @@ private:
     rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
-    // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub;
-    visualization_msgs::msg::MarkerArray marker_array;
-    visualization_msgs::msg::Marker marker;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
 
-    std::shared_ptr<DynamicWindowApproach> dwa_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr robot;
+    visualization_msgs::msg::MarkerArray marker_array;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub;
+    visualization_msgs::msg::Marker marker;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr all;
+    visualization_msgs::msg::Marker marker_all;
 
-    std::vector<geometry_msgs::msg::Point> path_history_; // 로봇 이동 기록
+    std::shared_ptr<DynamicWindowApproach> dwa_;
 };
 
 // #endif // ROS2_TERM_PROJECT_CMD_PUBLISHER_H
