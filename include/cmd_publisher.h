@@ -21,6 +21,7 @@
 #include <rclcpp/publisher.hpp>
 #include <set>
 #include <vector>
+#include <sensor_msgs/msg/laser_scan.hpp>
 
 class CmdPublisher : public rclcpp::Node
 {
@@ -34,6 +35,8 @@ private:
     void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void visualizeTrajectory(const std::vector<Eigen::VectorXd> &trajectory);
     void visualizeAllTrajectories(const std::vector<std::vector<Eigen::VectorXd>> &trajectories);
+    void visualizeObstacle(const std::vector<Eigen::Vector2d> &currentObstalce);
+    void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
 
     double x, y, z;
     double yaw;
@@ -50,7 +53,8 @@ private:
 
     rclcpp::TimerBase::SharedPtr timer_cmd, timer_tf;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd;
-    rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
+    //rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_scan;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
@@ -60,11 +64,10 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub;
     visualization_msgs::msg::Marker marker;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr all;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr obstacle;
-    //visualization_msgs::msg::Marker marker_all;
-
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr currentObstacle;
+    
     std::shared_ptr<DynamicWindowApproach> dwa_;
-    std::vector<std::tuple<rclcpp::Time, double, double>> dynamic_obstacles; // 시간 + 좌표
+    //std::vector<std::tuple<rclcpp::Time, double, double>> dynamic_obstacles; // 시간 + 좌표
 };
 
 // #endif // ROS2_TERM_PROJECT_CMD_PUBLISHER_H

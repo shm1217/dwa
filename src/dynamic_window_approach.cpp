@@ -24,8 +24,41 @@ void DynamicWindowApproach::setGoal(double x, double y)
 
 void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs)
 {
-    obstacles_ = obs;
+    rclcpp::Time now = rclcpp::Clock().now();
+    for (const auto& o : obs)
+    {
+        timed_obstacles_.push_back(std::make_tuple(now, o.x(), o.y()));
+    }
+
+    // 오래된 장애물 제거 (2초 기준)
+    auto it = timed_obstacles_.begin();
+    while (it != timed_obstacles_.end())
+    {
+        if ((now - std::get<0>(*it)).seconds() > 5.0)
+        {
+            it = timed_obstacles_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // 업데이트된 장애물 벡터 생성
+    std::vector<Eigen::Vector2d> filtered_obs;
+    for (const auto& item : timed_obstacles_)
+    {
+        filtered_obs.emplace_back(std::get<1>(item), std::get<2>(item));
+    }
+
+    obstacles_ = filtered_obs;
 }
+
+const std::vector<Eigen::Vector2d> &DynamicWindowApproach::getObstacles() const
+{
+    return obstacles_;
+}
+
 
 Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하고 최적의 조합 반환, 최종적으로 사용하는 함수
 {

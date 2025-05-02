@@ -22,6 +22,8 @@ public:
     Eigen::Vector2d computeBestControl();
     std::vector<Eigen::VectorXd> getBestTrajectory() const;
     const std::vector<std::vector<Eigen::VectorXd>> &getAllTrajectories() const;
+    const std::vector<Eigen::Vector2d> &getObstacles() const;
+
 
 private:
     void computeDynamicWindow();
@@ -36,13 +38,11 @@ private:
     Eigen::VectorXd currentState_; // x, y, theta, v, w
     Eigen::Vector2d goal_;
     std::vector<Eigen::Vector2d> obstacles_;
+    std::vector<std::tuple<rclcpp::Time, double, double>> timed_obstacles_;
 
     std::vector<double> dynamic_window_; // [v_min, v_max, w_min, w_max]
     std::vector<Eigen::VectorXd> best_trajectory_;
     std::vector<std::vector<Eigen::VectorXd>> all_trajectories_;
-
-    //std::vector<std::tuple<rclcpp::Time, double, double>> dynamic_obstacles; // 시간 + 좌표
-
 
     double dt_ = 0.1;           // 0.1
     double predict_time_ = 3.0; // 2.0
