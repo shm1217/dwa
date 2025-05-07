@@ -34,7 +34,7 @@ void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs
     auto it = timed_obstacles_.begin();
     while (it != timed_obstacles_.end())
     {
-        if ((now - std::get<0>(*it)).seconds() > 5.0)
+        if ((now - std::get<0>(*it)).seconds() > 2.0)
         {
             it = timed_obstacles_.erase(it);
         }
