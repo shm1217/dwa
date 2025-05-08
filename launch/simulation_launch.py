@@ -13,7 +13,21 @@ def generate_launch_description():
         output='screen',
         parameters=[{'obsTime_sec': obs_time}]
     )
+    octomap_node = Node(
+        package="octomap_server",
+        executable="octomap_server_node",
+        output="screen",
+        name="octomap_server",
+        parameters=[
+            {"frame_id": "map",
+             "resolution": 0.1}
+        ],
+        remappings=[
+            ('cloud_in', '/scan_matched_points2'),
+        ]
+    )
 
     ld.add_action(controller_node)
+    ld.add_action(octomap_node)
 
     return ld
