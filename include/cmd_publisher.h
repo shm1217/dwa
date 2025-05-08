@@ -19,9 +19,9 @@
 #include <memory>
 #include <queue>
 #include <rclcpp/publisher.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
 #include <set>
 #include <vector>
-#include <sensor_msgs/msg/laser_scan.hpp>
 
 class CmdPublisher : public rclcpp::Node
 {
@@ -48,12 +48,13 @@ private:
 
     double state_x, state_y;
     rclcpp::Time prev_time;
+    double obsTime_sec;
 
     Map map;
 
     rclcpp::TimerBase::SharedPtr timer_cmd, timer_tf;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd;
-    //rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
+    // rclcpp::Subscription<OctomapMsg>::SharedPtr sub_octomap;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_scan;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
@@ -65,9 +66,9 @@ private:
     visualization_msgs::msg::Marker marker;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr all;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr currentObstacle;
-    
+
     std::shared_ptr<DynamicWindowApproach> dwa_;
-    //std::vector<std::tuple<rclcpp::Time, double, double>> dynamic_obstacles; // 시간 + 좌표
+    // std::vector<std::tuple<rclcpp::Time, double, double>> dynamic_obstacles; // 시간 + 좌표
 };
 
 // #endif // ROS2_TERM_PROJECT_CMD_PUBLISHER_H

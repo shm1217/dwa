@@ -8,8 +8,6 @@ DynamicWindowApproach::DynamicWindowApproach(double goal_x, double goal_y)
     currentState_ = Eigen::VectorXd::Zero(5); // x, y, theta, v, w 초기화
     goal_ = Eigen::Vector2d(goal_x, goal_y);
     dynamic_window_.resize(4); // dynamic window 크기 설정
-    /*marker_tra = this->create_publisher<visualization_msgs::msg::Marker>(
-        "trajectory/marker", 10);*/
 }
 
 void DynamicWindowApproach::setCurrentState(double x, double y, double theta, double v, double w)
@@ -22,10 +20,16 @@ void DynamicWindowApproach::setGoal(double x, double y)
     goal_ << x, y;
 }
 
+void DynamicWindowApproach::setObsTime(double x)
+{
+    obsTime_sec = x;
+}
+
 void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs)
 {
+    std::cout << "장애물 초기화 시간 : " << obsTime_sec << std::endl;
     rclcpp::Time now = rclcpp::Clock().now();
-    for (const auto& o : obs)
+    for (const auto &o : obs)
     {
         timed_obstacles_.push_back(std::make_tuple(now, o.x(), o.y()));
     }
@@ -34,7 +38,7 @@ void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs
     auto it = timed_obstacles_.begin();
     while (it != timed_obstacles_.end())
     {
-        if ((now - std::get<0>(*it)).seconds() > 5.0)
+        if ((now - std::get<0>(*it)).seconds() > obsTime_sec)
         {
             it = timed_obstacles_.erase(it);
         }
@@ -46,7 +50,7 @@ void DynamicWindowApproach::setObstacles(const std::vector<Eigen::Vector2d> &obs
 
     // 업데이트된 장애물 벡터 생성
     std::vector<Eigen::Vector2d> filtered_obs;
-    for (const auto& item : timed_obstacles_)
+    for (const auto &item : timed_obstacles_)
     {
         filtered_obs.emplace_back(std::get<1>(item), std::get<2>(item));
     }
@@ -58,7 +62,6 @@ const std::vector<Eigen::Vector2d> &DynamicWindowApproach::getObstacles() const
 {
     return obstacles_;
 }
-
 
 Eigen::Vector2d DynamicWindowApproach::computeBestControl() // (v,w) 계산하고 최적의 조합 반환, 최종적으로 사용하는 함수
 {

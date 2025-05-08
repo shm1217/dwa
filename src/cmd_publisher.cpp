@@ -19,9 +19,9 @@ using std::placeholders::_1;
 CmdPublisher::CmdPublisher() : Node("cmd_publisher"), goal_x(0.0), goal_y(0.0), goal_received(false)
 {
     pub_cmd = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
-    //sub_octomap = this->create_subscription<OctomapMsg>("octomap_full", 10, std::bind(&CmdPublisher::octomap_callback, this, _1));
-    sub_scan = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&CmdPublisher::scan_callback, this, _1));
-    
+    // sub_octomap = this->create_subscription<OctomapMsg>("octomap_full", 10, std::bind(&CmdPublisher::octomap_callback, this, _1));
+    sub_scan = this->create_subscription<sensor_msgs::msg::LaserScan>("scan", 10, std::bind(&CmdPublisher::scan_callback, this, _1));
+
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
@@ -40,6 +40,8 @@ CmdPublisher::CmdPublisher() : Node("cmd_publisher"), goal_x(0.0), goal_y(0.0), 
         "currentObstacle/marker", 10);
 
     dwa_ = std::make_shared<DynamicWindowApproach>(0.0, 0.0); // 초기 목표는 임시값
+    this->declare_parameter("obsTime_sec", 2.0);
+    this->get_parameter("obsTime_sec", obsTime_sec);
 }
 
 void CmdPublisher::goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
@@ -48,6 +50,7 @@ void CmdPublisher::goal_callback(const geometry_msgs::msg::PoseStamped::SharedPt
     goal_y = msg->pose.position.y;
     goal_received = true;
     dwa_->setGoal(goal_x, goal_y);
+    dwa_->setObsTime(obsTime_sec);
     RCLCPP_INFO(this->get_logger(), "Received goal: x = %f, y = %f", goal_x, goal_y);
 }
 
@@ -108,19 +111,15 @@ void CmdPublisher::timer_tf_callback()
 }
 void CmdPublisher::scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
 {
-    RCLCPP_INFO(this->get_logger(), "111");
     octomap::point3d world_min(-10, -10, 0);
     octomap::point3d world_max(10, 10, 2);
-    //map.update(msg, world_min, world_max);
+    // map.update(msg, world_min, world_max);
 
     std::vector<Eigen::Vector2d> obs_list;
-    RCLCPP_INFO(this->get_logger(), "117");
     double angle = msg->angle_min;
     for (size_t i = 0; i < msg->ranges.size(); ++i)
     {
         double r = msg->ranges[i];
-        std::cout << r << msg->range_min << msg->range_max << std::endl;
-
         if (std::isfinite(r) && r > msg->range_min && r < msg->range_max)
         {
             // 로봇 기준(x, y) 상대 좌표
@@ -132,7 +131,7 @@ void CmdPublisher::scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr ms
             double obs_y_global = y + std::sin(yaw) * obs_x_local + std::cos(yaw) * obs_y_local;
 
             obs_list.emplace_back(obs_x_global, obs_y_global);
-            std::cout << "장애물 감지 : " << obs_x_global << " , " << obs_y_global << std::endl;
+            // std::cout << "장애물 감지 : " << obs_x_global << " , " << obs_y_global << std::endl;
         }
 
         angle += msg->angle_increment;
@@ -149,20 +148,6 @@ void CmdPublisher::timer_cmd_callback()
         return;
     }
 
-    /*octomap::point3d search_point(x, y, 0.2);
-    octomap::point3d closest_obstacle;
-    float distance;
-    map.get_distance_and_closest_obstacle(search_point, distance, closest_obstacle);
-    
-    std::vector<Eigen::Vector2d> obs;
-    if( distance > 0 )
-    {
-        RCLCPP_INFO(this->get_logger(), "장애물 감지 :%f, %f", closest_obstacle.x(), closest_obstacle.y());
-        obs.emplace_back(closest_obstacle.x(), closest_obstacle.y());
-    }
-    
-    dwa_->setObstacles(obs);*/
-
     // 최적 속도 계산
     Eigen::Vector2d control = dwa_->computeBestControl();
 
@@ -173,7 +158,7 @@ void CmdPublisher::timer_cmd_callback()
 
     visualizeAllTrajectories(dwa_->getAllTrajectories());
     visualizeTrajectory(dwa_->getBestTrajectory());
-    visualizeObstacle(dwa_-> getObstacles());
+    visualizeObstacle(dwa_->getObstacles());
 
     if (std::hypot(goal_x - x, goal_y - y) < 0.2)
     {
@@ -185,13 +170,13 @@ void CmdPublisher::timer_cmd_callback()
 }
 void CmdPublisher::visualizeObstacle(const std::vector<Eigen::Vector2d> &Obstacle)
 {
-    int id=0;
+    int id = 0;
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = this->get_clock()->now();
     marker.ns = "current_obstacle";
     marker.id = id++;
-    marker.type = visualization_msgs::msg::Marker::CUBE;
+    marker.type = visualization_msgs::msg::Marker::CUBE_LIST;
     marker.action = visualization_msgs::msg::Marker::ADD;
     marker.scale.x = 0.1;
     marker.scale.y = 0.1;
@@ -208,6 +193,7 @@ void CmdPublisher::visualizeObstacle(const std::vector<Eigen::Vector2d> &Obstacl
         p.y = obs.y();
         p.z = 0.0;
         marker.points.push_back(p);
+        // std::cout << "저장된 장애물 : " << p.x << "," << p.y << std::endl;
     }
     currentObstacle->publish(marker);
 }
@@ -240,7 +226,7 @@ void CmdPublisher::visualizeAllTrajectories(const std::vector<std::vector<Eigen:
             pt.z = 0.0;
             marker.points.push_back(pt);
         }
-        //RCLCPP_INFO(this->get_logger(), "Publishing trajectory with %zu points", marker.points.size());
+        // RCLCPP_INFO(this->get_logger(), "Publishing trajectory with %zu points", marker.points.size());
         all->publish(marker);
     }
 }

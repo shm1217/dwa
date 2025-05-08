@@ -18,12 +18,12 @@ public:
     void setCurrentState(double x, double y, double theta, double v, double w);
     void setGoal(double x, double y);
     void setObstacles(const std::vector<Eigen::Vector2d> &obs);
+    void setObsTime(double x);
 
     Eigen::Vector2d computeBestControl();
     std::vector<Eigen::VectorXd> getBestTrajectory() const;
     const std::vector<std::vector<Eigen::VectorXd>> &getAllTrajectories() const;
     const std::vector<Eigen::Vector2d> &getObstacles() const;
-
 
 private:
     void computeDynamicWindow();
@@ -65,4 +65,6 @@ private:
     double weight_goal_ = 1.0;
     double weight_obstacle_ = 0.3;
     double weight_velocity_ = 2.0;
+
+    double obsTime_sec;
 };
